@@ -64,7 +64,7 @@ class S1Client:
     def fetch_incidents(self):
         url = self.url + INCIDENTS_API_LOCATION + self.account_id
         incidents = self.get_request(url)
-        if type(incidents) is str:
+        if incidents is not None:
             return incidents
         return [inc.get("threatInfo", {}).get("threatId") for inc in incidents]
 
