@@ -3,12 +3,12 @@ ENV CONNECTOR_TYPE=STREAM
 
 COPY src /opt/connector-sentinel-one-incident
 
-RUN apk --no-cache add file libmagic \
-    libxml2 libxml2-dev libxslt libxslt-dev yaml-dev
+RUN apk update && apk upgrade && \
+    apk --no-cache add git build-base libmagic libffi-dev libxml2-dev libxslt-dev
 
 RUN cd /opt/connector-sentinel-one-incident && \
-    pip3 install --no-cache-dir -r requirements.txt
-
+    pip3 install --no-cache-dir -r requirements.txt && \
+    apk del git build-base
 
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh

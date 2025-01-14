@@ -1,35 +1,41 @@
-from pycti import get_config_variable
-from stix2 import (
-    TLP_RED,
+import stix2
+from pycti import (
     AttackPattern,
-    ExternalReference,
     Identity,
     Incident,
     Indicator,
     Note,
-    Relationship,
-    UserAccount,
-    utils,
+    StixCoreRelationship,
 )
 
 
-class StixClient:
-    def __init__(self, config, helper):
+class ConverterToStix:
+    """
+    Provides methods for converting various types of input data into STIX 2.1 objects.
 
-        source_name = (
-            get_config_variable("CONNECTOR_NAME", ["connector", "name"], config)
-            or "SentinelOne Incident Importer"
-        )
+    REQUIREMENTS:
+    - generate_id() for each entity from OpenCTI pycti library except observables to create
+    """
 
-        source_identity = Identity(
-            ###id = ???,
-            name=source_name,
-            identity_class="organization",
-            description="SentinelOne Incident Connector.",
-        )
-        self.source = source_identity
-
+    def __init__(self, helper):
         self.helper = helper
+        self.author = self.create_author()
+
+    @staticmethod
+    def create_author() -> dict:
+        """
+        Create Author
+        :return: Author in Stix2 object
+        """
+        author = stix2.Identity(
+            id=Identity.generate_id(
+                name="SentinelOne Incident Connector", identity_class="organization"
+            ),
+            name="SentinelOne Incident Connector",
+            identity_class="organization",
+            description="The SentinelOne Incident Connector",
+        )
+        return author
 
     def create_incident(self, incident_data, incident_id, s1_url):
         def convert_confidence(confidence):
@@ -60,30 +66,32 @@ class StixClient:
             if indicator.get("category", "") != ""
         ]
 
-        external_s1_ref = ExternalReference(
-             ###id = ???,
+        external_s1_ref = stix2.ExternalReference(
             source_name="SentinelOne",
-            url=f"{s1_url}/incidents/threats/{incident_id}/overview",
+            url=f"{s1_url}incidents/threats/{incident_id}/overview",
             description="View Incident In SentinelOne",
         )
 
-        incident = Incident(
-            ###id = ???,
+        name = incident_data.get("threatInfo", {}).get("threatName", "")
+        created = incident_data.get("threatInfo", {}).get("identifiedAt", "")
+
+        incident = stix2.Incident(
+            id=Incident.generate_id(name, created),
+            created_by_ref=self.author,
             type="incident",
-            name=incident_data.get("threatInfo", {}).get("threatName", ""),
+            name=name,
             description=description,
             labels=labels,
             confidence=convert_confidence(
                 incident_data.get("threatInfo", {}).get("confidenceLevel", "suspicious")
             ),
-            created=incident_data["threatInfo"]["identifiedAt"],
+            created=created,
             external_references=[external_s1_ref] if external_s1_ref else None,
-            object_marking_refs=[TLP_RED.id],
-            created_by_ref=self.source.id,
-            custom_properties={"source": self.source.name},
+            object_marking_refs=[stix2.TLP_RED.id],
+            custom_properties={"source": self.author.name},
         )
 
-        return [incident, self.source]
+        return [incident]
 
     def create_endpoint_observable(self, s1_incident, cti_incident_id):
 
@@ -103,11 +111,10 @@ class StixClient:
         )
         desc = f"Affected Host on SentinelOne Account {account_name} (with id: {account_id})"
 
-        endpoint_observable = UserAccount(
-            ###id = ???,
+        endpoint_observable = stix2.UserAccount(
             account_type="hostname",
-            user_id="BWPC-PC1-RED",
-            object_marking_refs=[TLP_RED.id],
+            user_id=endpoint_name,
+            object_marking_refs=[stix2.TLP_RED.id],
             custom_properties={"description": desc},
         )
 
@@ -120,8 +127,7 @@ class StixClient:
     def create_attack_patterns(self, incident_data, cti_incident_id):
 
         def create_mitre_reference(technique):
-            mitre_ref = ExternalReference(
-                ###id = ???,
+            mitre_ref = stix2.ExternalReference(
                 source_name="MITRE ATT&CK",
                 url=technique.get("link"),
                 external_id=technique.get("name"),
@@ -145,11 +151,12 @@ class StixClient:
                 )
             )
 
-            attack_pattern = AttackPattern(
-                ###id = ???,
+            attack_pattern = stix2.AttackPattern(
+                id=AttackPattern.generate_id(pattern_name),
+                created_by_ref=self.author,
                 name=pattern_name,
                 description=pattern.get("description", ""),
-                object_marking_refs=[TLP_RED.id],
+                object_marking_refs=[stix2.TLP_RED.id],
             )
 
             for tactic in pattern.get("tactics", []):
@@ -161,15 +168,17 @@ class StixClient:
                     ]
                 )
 
-                sub_pattern = AttackPattern(
-                    ###id = ???,
-                    name="[sub] " + tactic.get("name", ""),
+                sub_name = "[sub] " + tactic.get("name", "")
+                sub_pattern = stix2.AttackPattern(
+                    id=AttackPattern.generate_id(sub_name),
+                    created_by_ref=self.author,
+                    name=sub_name,
                     description=sub_desc,
                     external_references=[
                         create_mitre_reference(technique)
                         for technique in tactic.get("techniques", [])
                     ],
-                    object_marking_refs=[TLP_RED.id],
+                    object_marking_refs=[stix2.TLP_RED.id],
                 )
 
                 attack_patterns.append(sub_pattern)
@@ -190,13 +199,14 @@ class StixClient:
 
         incident_notes = []
         for note in s1_notes:
-            incident_note = Note(
-                ###id = ???,
-                content=note.get("text", "")
-                + "\ncreated by: "
-                + note.get("creator", ""),
+            content = note.get("text", "") + "\ncreated by: " + note.get("creator", "")
+            created = note.get("createdAt", "")
+            incident_note = stix2.Note(
+                id=Note.generate_id(content=content, created=created),
+                created_by_ref=self.author,
+                content=content,
                 object_refs=[cti_incident_id],
-                object_marking_refs=[TLP_RED.id],
+                object_marking_refs=[stix2.TLP_RED.id],
             )
             incident_notes.append(incident_note)
 
@@ -218,12 +228,13 @@ class StixClient:
 
         indicators = []
         for pattern in available_patterns:
-            indicator = Indicator(
-                ###id = ???,
+            indicator = stix2.Indicator(
+                id=Indicator.generate_id(pattern),
+                created_by_ref=self.author,
                 pattern=pattern,
                 name="Malicious File Hash Indicator",
                 pattern_type="stix",
-                object_marking_refs=[TLP_RED.id],
+                object_marking_refs=[stix2.TLP_RED.id],
             )
             indicators.append(
                 self.create_relationship(cti_incident_id, indicator["id"], "related-to")
@@ -233,12 +244,12 @@ class StixClient:
         return indicators
 
     def create_relationship(self, parent_id, child_id, relationship_type):
-
-        relationship = Relationship(
-            ###id = ???,
+        relationship = stix2.Relationship(
+            id=StixCoreRelationship.generate_id(relationship_type, parent_id, child_id),
+            created_by_ref=self.author,
             relationship_type=relationship_type,
             source_ref=parent_id,
             target_ref=child_id,
-            object_marking_refs=[TLP_RED.id],
+            object_marking_refs=[stix2.TLP_RED.id],
         )
         return relationship
