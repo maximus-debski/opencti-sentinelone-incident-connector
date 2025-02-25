@@ -1,7 +1,7 @@
 version: '3'
 services:
   connector-sentinelone-incidents:
-    image: opencti/connector-sentinelone-incidents:1.0.0
+    build: ./
     environment:
       - OPENCTI_URL=http://localhost
       - OPENCTI_TOKEN=ChangeMe
