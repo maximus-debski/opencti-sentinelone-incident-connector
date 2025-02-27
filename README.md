@@ -138,7 +138,6 @@ It is best practice to create a new user under the `Connectors` group and to use
 - Config.yml: `duration_period`
 
 
-CONNECTOR_DURATION_PERIO
 
 <br>
 
