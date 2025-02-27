@@ -23,13 +23,13 @@ The connector will create a corresponding OpenCTI Incident for `flagged` Sentine
 
 <br>
 
-- To `flag` a threat in SentinelOne, simply create a new note on the threat's page whose text is the value of `SENTINELONE_SEARCH_SIGN`. You will define this as an environment variable in the setup (`[OpenCTI_add]` by default).
+- To `flag` a threat in SentinelOne, simply create a new note on the threat's page whose text is the value of `SIGN`. You will define this as an environment variable in the setup (`[OpenCTI_add]` by default).
 
 ![Flagging Note In S1](doc/tag_note.png)
 
 <br>
 
-- Each fetch interval, the connector will scan the threats on your SentinelOne account, triggering the creation process on those that are flagged. The interval between scans is determined by the enviroment variable `CONNECTOR_FETCH_INTERVAL` that you will define in seconds.
+- Each fetch interval, the connector will scan the threats on your SentinelOne account, triggering the creation process on those that are flagged. The interval between scans is determined by the enviroment variable `CONNECTOR_DURATION_PERIOD` that you will define in seconds.
 
 <br>
 
@@ -146,19 +146,19 @@ It is best practice to create a new user under the `Connectors` group and to use
 ##### SentinelOne URL
 - The SentinelOne URL used to access the console. **NOTE:** The URL should not end with a `/`.
 - Example: `https://usea1-purple.sentinelone.net`
-- Environment Variable: `SENTINELONE_URL`
+- Environment Variable: `S1_URL`
 - Config.yml: `url`
 
 ##### SentinelOne API Key
 - The API key for your SentinelOne account (JWT). **NOTE:** Should not include `APIToken`.
 - Example: `eyJraWQiO...`
-- Environment Variable: `SENTINELONE_API_KEY`
+- Environment Variable: `S1_API_KEY`
 - Config.yml: `api_key`
 
 ##### SentinelOne Account ID
 - The ID of your SentinelOne Account.
 - Example: `1234567890123456789`
-- Environment Variable: `SENTINELONE_ACCOUNT_ID`
+- Environment Variable: `S1_ACCOUNT_ID`
 - Config.yml: `account_id`
 
 ##### Maximum API Attempts
@@ -167,10 +167,10 @@ It is best practice to create a new user under the `Connectors` group and to use
 - Environment Variable: `MAX_API_ATTEMPTS`
 - Config.yml: `max_api_attempts`
 
-##### Log SentinelOne Response
-- Enabling this will log a list of UUIDs of the IOCs SentinelOne created for each bundle, allowing you to check/confirm their presence in your instance.
-- Example: `true`
-- Environment Variable: `LOG_S1_RESPONSE`
-- Config.yml: `log_s1_response`
+##### Incident Flag String
+- The string that will be inputted into a note for an Incident in SentinelOne to flag it for importing. 
+- Example: `[OpenCTI_add]`
+- Environment Variable: `SIGN`
+- Config.yml: `sign`
 
 <br>
